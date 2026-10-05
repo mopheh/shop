@@ -169,3 +169,48 @@ export async function getOrderWithItems(
 
   return { ...order, items: itemRows as (OrderItem & { product_name: string; image_url: string })[] };
 }
+
+// ─── Cart (synced across web + mobile) ───────────────────────────────────────
+
+export interface CartLine {
+  productId: number;
+  name: string;
+  priceKobo: number;
+  imageUrl: string;
+  quantity: number;
+}
+
+export async function getCart(userId: string): Promise<CartLine[]> {
+  const rows = await sql`
+    SELECT ci.product_id, ci.quantity, p.name, p.price_kobo, p.image_url
+    FROM cart_items ci
+    JOIN products p ON p.id = ci.product_id
+    WHERE ci.user_id = ${userId}
+    ORDER BY ci.updated_at, ci.product_id
+  `;
+  return rows.map((r) => ({
+    productId: r.product_id as number,
+    name: r.name as string,
+    priceKobo: r.price_kobo as number,
+    imageUrl: r.image_url as string,
+    quantity: r.quantity as number,
+  }));
+}
+
+/** Replaces the user's whole cart. Unknown product ids are ignored. */
+export async function replaceCart(
+  userId: string,
+  items: Array<{ productId: number; quantity: number }>
+): Promise<void> {
+  const ids = items.map((i) => i.productId);
+  const qty = items.map((i) => i.quantity);
+  await sql.transaction([
+    sql`DELETE FROM cart_items WHERE user_id = ${userId}`,
+    sql`
+      INSERT INTO cart_items (user_id, product_id, quantity)
+      SELECT ${userId}, p.id, i.quantity
+      FROM unnest(${ids}::int[], ${qty}::int[]) AS i(product_id, quantity)
+      JOIN products p ON p.id = i.product_id
+    `,
+  ]);
+}

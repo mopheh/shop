@@ -1,0 +1,15 @@
+export const colors = {
+  bg: "#f8fafc",
+  card: "#ffffff",
+  border: "#e2e8f0",
+  text: "#0f172a",
+  muted: "#64748b",
+  faint: "#94a3b8",
+  brand: "#22c55e",
+  brandDark: "#16a34a",
+  brandLight: "#dcfce7",
+  danger: "#ef4444",
+  dangerLight: "#fee2e2",
+  slate900: "#0f172a",
+  slate800: "#1e293b",
+};

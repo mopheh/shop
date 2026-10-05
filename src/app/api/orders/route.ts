@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getUserId } from "@/lib/mobile-auth";
+import { getOrdersByUserId } from "@/lib/db";
 import { placeOrder } from "@/lib/orders";
 import { ZodError } from "zod";
 
@@ -7,8 +8,8 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   // 1. Require authentication
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   // 3. Place order — validation, price recomputation, DB write, email
   try {
-    const order = await placeOrder(session.user.id, body);
+    const order = await placeOrder(userId, body);
     return NextResponse.json({ orderId: order.id }, { status: 201 });
   } catch (err) {
     if (err instanceof ZodError) {
@@ -37,4 +38,13 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(req: NextRequest) {
+  const userId = await getUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const orders = await getOrdersByUserId(userId);
+  return NextResponse.json({ orders });
 }
